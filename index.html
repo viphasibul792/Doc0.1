@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A4 Text to Color PDF Generator</title>
+    <!-- Google Noto Serif Bengali Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- MathJax for Rendering Math Equations -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- html2pdf.js for direct file download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        :root {
+            --font-family: 'Noto Serif Bengali', serif;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .editor-container {
+            max-width: 950px;
+            margin: 0 auto 30px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        /* Nav Tabs Styling */
+        .tab-menu {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            color: #333;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            border-radius: 0;
+        }
+
+        .tab-btn:hover {
+            background: #f0f0f0;
+            color: #000;
+        }
+
+        .tab-btn.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+            background: transparent;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        button {
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Alignment Control Group */
+        .alignment-group {
+            display: flex;
+            background: #e9ecef;
+            border-radius: 6px;
+            padding: 2px;
+            gap: 2px;
+        }
+
+        .alignment-group button {
+            background: transparent;
+            color: #333;
+            padding: 6px 10px;
+            border-radius: 4px;
+        }
+
+        .alignment-group button:hover {
+            background: #ced4da;
+        }
+
+        .formatting-bar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            width: 100%;
+        }
+
+        .formatting-bar button {
+            background: #ffffff;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 5px 10px;
+        }
+
+        .formatting-bar button:hover {
+            background: #e2e6ea;
+        }
+
+        .formatting-bar select, .formatting-bar input[type="number"] {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        .color-picker-wrapper {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .color-picker-wrapper input[type="color"] {
+            width: 30px;
+            height: 30px;
+            border: none;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        /* A4 Page Formatting */
+        .page-preview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: auto;
+            padding: 20px 0;
+            gap: 20px;
+        }
+
+        .a4-page {
+            width: 210mm;
+            height: 297mm;
+            max-height: 297mm;
+            padding: 20mm;
+            background: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+            box-sizing: border-box;
+            font-family: var(--font-family);
+            font-size: 11pt;
+            line-height: 1.2;
+            color: #000;
+            word-wrap: break-word;
+            position: relative;
+            transform-origin: top center;
+            transition: transform 0.2s ease;
+            overflow: hidden;
+            outline: none;
+        }
+
+        .a4-page.two-columns {
+            column-count: 2;
+            column-gap: 20mm;
+            column-rule: 1px solid #e0e0e0;
+        }
+
+        .a4-page p {
+            margin-top: 2px;
+            margin-bottom: 4px;
+        }
+
+        /* MathJax Styling */
+        .mjx-chtml {
+            font-family: 'Times New Roman', Times, serif !important;
+            font-size: 1.15em !important;
+        }
+
+        /* Custom Shape Title Box */
+        .custom-shape-banner {
+            background-color: #0b255a;
+            color: #ffffff;
+            text-align: center;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14pt;
+            font-weight: bold;
+            margin: 10px auto;
+            width: fit-content;
+            min-width: 180px;
+            max-width: 90%;
+            display: block;
+            outline: none;
+            break-inside: avoid;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* Alert Box */
+        .custom-alert-box {
+            position: relative;
+            background-color: #fde8e8;
+            border: 1.5px solid #e74c3c;
+            border-radius: 12px;
+            padding: 15px 20px 12px 20px;
+            margin: 10px 0;
+            break-inside: avoid;
+        }
+
+        .alert-badge {
+            position: absolute;
+            top: -14px;
+            left: 20px;
+            background-color: #c0392b;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 10pt;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Modal / Pop-up for Numbering Panel */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 8% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 450px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .close-btn {
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: bold;
+            color: #aaa;
+        }
+
+        .close-btn:hover {
+            color: #000;
+        }
+
+        .numbering-section {
+            margin-top: 15px;
+        }
+
+        .numbering-title {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .grid-options {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .grid-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            background: #fff;
+            font-size: 14px;
+        }
+
+        .grid-item:hover {
+            background: #e9ecef;
+            border-color: #007bff;
+        }
+
+        @media print {
+            body {
+                background: none;
+                padding: 0;
+            }
+
+            .editor-container, .modal {
+                display: none !important;
+            }
+
+            .page-preview {
+                gap: 0;
+                padding: 0;
+            }
+
+            .a4-page {
+                box-shadow: none;
+                margin: 0;
+                transform: scale(1) !important;
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="editor-container">
+        <h2>A4 Page Text & Alert Box PDF Generator</h2>
+        
+        <!-- Navigation Menu Tabs -->
+        <div class="tab-menu">
+            <button class="tab-btn active" onclick="switchTab('homeTab', this)">Home</button>
+            <button class="tab-btn" onclick="switchTab('insertTab', this)">Insert</button>
+            <button class="tab-btn" onclick="switchTab('viewTab', this)">View</button>
+        </div>
+
+        <!-- HOME TAB CONTENT -->
+        <div id="homeTab" class="tab-content active">
+            <div class="formatting-bar">
+                <button onclick="formatText('bold')" title="Bold"><b>B</b></button>
+                <button onclick="formatText('italic')" title="Italic"><i>I</i></button>
+                <button onclick="formatText('underline')" title="Underline"><u>U</u></button>
+                <button onclick="formatText('strikeThrough')" title="Strikethrough"><s>ab</s></button>
+                <button onclick="formatText('superscript')" title="Superscript">X<sup>2</sup></button>
+
+                <select onchange="applyHeading(this.value)">
+                    <option value="p">Normal</option>
+                    <option value="h1">Heading 1</option>
+                    <option value="h2">Heading 2</option>
+                    <option value="h3">Heading 3</option>
+                </select>
+
+                <label style="font-size: 12px; margin-left: 5px;">Size:</label>
+                <input type="number" id="fontSizeInput" min="8" max="72" value="11" style="width: 50px;" onchange="changeFontSize(this.value)">
+
+                <div class="color-picker-wrapper" title="Font Color">
+                    <label style="font-size: 12px;">🎨 Color:</label>
+                    <input type="color" id="textColorPicker" onchange="applyTextColor(this.value)" value="#000000">
+                </div>
+
+                <div class="alignment-group">
+                    <button onclick="setTextAlignment('left')" title="Align Left">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
+                    </button>
+                    <button onclick="setTextAlignment('center')" title="Align Center">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="10" x2="6" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="18" y1="18" x2="6" y2="18"></line></svg>
+                    </button>
+                    <button onclick="setTextAlignment('right')" title="Align Right">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="7" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="7" y2="18"></line></svg>
+                    </button>
+                    <button onclick="setTextAlignment('justify')" title="Justify">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>
+                    </button>
+                </div>
+
+                <button onclick="decreaseLineSpacing()" style="background-color: #6f42c1;">↕️ Spacing (-)</button>
+                <button onclick="increaseLineSpacing()" style="background-color: #6f42c1;">↕️ Spacing (+)</button>
+                <button onclick="undo()" style="background-color: #ffc107; color: #000;">↩️ Undo</button>
+                <button onclick="redo()" style="background-color: #ffc107; color: #000;">↪️ Redo</button>
+            </div>
+        </div>
+
+        <!-- INSERT TAB CONTENT -->
+        <div id="insertTab" class="tab-content">
+            <button onclick="addBlankPage()" style="background-color: #17a2b8;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                Blank Page
+            </button>
+            <button onclick="insertShapeBanner()" style="background-color: #0b255a;">🏷️ শেপ ব্যানার</button>
+            <button onclick="insertAlert()">⚠️ সতর্কতা বক্স</button>
+            <button onclick="openNumberingModal()" style="background-color: #6c757d;">🔢 Numbering Panel</button>
+        </div>
+
+        <!-- VIEW TAB CONTENT -->
+        <div id="viewTab" class="tab-content">
+            <button onclick="downloadPDFFile()" style="background-color: #28a745;">📥 Download PDF</button>
+            <button onclick="generatePDF()" style="background-color: #17a2b8;">🖨️ Print / Save PDF</button>
+            <button onclick="toggleColumns()" style="background-color: #343a40;">III Columns (1/2)</button>
+            <button onclick="zoomIn()" style="background-color: #6c757d;">🔍 +</button>
+            <button onclick="zoomOut()" style="background-color: #6c757d;">🔍 -</button>
+            <button onclick="resetZoom()" style="background-color: #17a2b8;">🔄 Reset</button>
+        </div>
+    </div>
+
+    <div class="page-preview" id="pageContainer">
+        <!-- A4 Pages Output Container -->
+        <div class="a4-page" contenteditable="true">
+            <p>১. গতিশীল আধানের ওপর চৌম্বক বল: $F = qvB\sin\theta$</p>
+            <p>২. পরিবাহী তারের ওপর চৌম্বক বল: $F = iLB\sin\theta$</p>
+            <p>৩. লম্বা সোজা তারের জন্য চৌম্বক ক্ষেত্র: $B = \frac{\mu_0 i}{2\pi r}$</p>
+            <p>৪. বৃত্তাকার কুণ্ডলীর কেন্দ্রে চৌম্বক ক্ষেত্র: $B = \frac{\mu_0 N i}{2r}$ <i>(পাকসংখ্যা $N$ হলে)</i></p>
+            <p>৫. সোলেনয়েডের অভ্যন্তরে চৌম্বক ক্ষেত্র: $B = \mu_0 n i$ <i>(যেখানে একক দৈর্ঘ্যে পাকসংখ্যা, $n = \frac{N}{L}$)</i></p>
+            <p>৬. কুণ্ডলীর ওপর প্রযুক্ত টর্ক: $\tau = NiAB\sin\theta$</p>
+            <p><i>(এখানে ধ্রুবক, $\mu_0 = 4\pi \times 10^{-7} T m A^{-1}$)</i></p>
+
+            <div class="custom-alert-box">
+                <div class="alert-badge">⚠️ সতর্কতা!</div>
+                তাপমাত্রার সাথে পরিবাহীর রোধ বৃদ্ধি পেলেও অর্ধ-পরিবাহী ও অপরিবাহী পদার্থের ক্ষেত্রে তাপমাত্রা বাড়ার কারণ আমরা বহু অধ্যায়ে আলোচনা করতে পারছি।
+            </div>
+            <p><br></p>
+        </div>
+    </div>
+
+    <!-- Numbering Panel Modal -->
+    <div id="numberingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>&lt; Numbering</span>
+                <span class="close-btn" onclick="closeNumberingModal()">&times;</span>
+            </div>
+            
+            <div class="numbering-section">
+                <div class="numbering-title">Symbol</div>
+                <div class="grid-options">
+                    <div class="grid-item" onclick="applyListStyle('none')">⊘</div>
+                    <div class="grid-item" onclick="applyListStyle('disc')">• • •</div>
+                    <div class="grid-item" onclick="applyListStyle('circle')">◦ ◦ ◦</div>
+                    <div class="grid-item" onclick="applyListStyle('square')">■ ■ ■</div>
+                </div>
+
+                <div class="numbering-title">Numbering</div>
+                <div class="grid-options">
+                    <div class="grid-item" onclick="applyListStyle('none')">⊘</div>
+                    <div class="grid-item" onclick="applyListStyle('decimal')">1. 2.</div>
+                    <div class="grid-item" onclick="applyListStyle('decimal-parenthesis')">1) 2)</div>
+                    <div class="grid-item" onclick="applyListStyle('upper-roman')">I. II.</div>
+                    <div class="grid-item" onclick="applyListStyle('upper-alpha')">A. B.</div>
+                    <div class="grid-item" onclick="applyListStyle('lower-alpha-parenthesis')">a) b)</div>
+                    <div class="grid-item" onclick="applyListStyle('lower-alpha')">a. b.</div>
+                    <div class="grid-item" onclick="applyListStyle('lower-roman')">i. ii.</div>
+                </div>
+
+                <div class="numbering-title">Levels</div>
+                <div class="grid-options">
+                    <div class="grid-item" onclick="applyListStyle('none')">⊘</div>
+                    <div class="grid-item" onclick="applyListStyle('lower-alpha-parenthesis')">1) a)</div>
+                    <div class="grid-item" onclick="applyListStyle('decimal')">1. 1.1</div>
+                    <div class="grid-item" onclick="applyListStyle('disc')">❖ ➢</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pageContainer = document.getElementById('pageContainer');
+
+        let history = [];
+        let historyIndex = -1;
+        let isTwoColumns = false;
+
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btnElement.classList.add('active');
+        }
+
+        function saveState() {
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            history.push(pageContainer.innerHTML);
+            historyIndex++;
+        }
+
+        saveState();
+
+        function addBlankPage() {
+            const newPage = createNewPage();
+            pageContainer.appendChild(newPage);
+            attachPageEvents(newPage);
+            saveState();
+        }
+
+        function createNewPage() {
+            const newPage = document.createElement('div');
+            newPage.className = 'a4-page' + (isTwoColumns ? ' two-columns' : '');
+            newPage.contentEditable = 'true';
+            newPage.style.transform = `scale(${currentZoom})`;
+            newPage.style.lineHeight = currentLineHeight;
+            newPage.innerHTML = '<p><br></p>';
+            return newPage;
+        }
+
+        function paginate() {
+            let pages = Array.from(pageContainer.querySelectorAll('.a4-page'));
+            
+            for (let i = 0; i < pages.length; i++) {
+                let currentPage = pages[i];
+
+                while (currentPage.scrollHeight > currentPage.clientHeight) {
+                    let lastNode = currentPage.lastElementChild;
+                    if (!lastNode) break;
+
+                    let nextPage = pages[i + 1];
+                    if (!nextPage) {
+                        nextPage = createNewPage();
+                        pageContainer.appendChild(nextPage);
+                        attachPageEvents(nextPage);
+                        pages.push(nextPage);
+                    }
+
+                    nextPage.insertBefore(lastNode, nextPage.firstChild);
+                }
+
+                if (i > 0) {
+                    let prevPage = pages[i - 1];
+                    while (currentPage.children.length > 0) {
+                        let firstNode = currentPage.firstElementChild;
+                        prevPage.appendChild(firstNode);
+                        if (prevPage.scrollHeight > prevPage.clientHeight) {
+                            currentPage.insertBefore(firstNode, currentPage.firstChild);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            const updatedPages = pageContainer.querySelectorAll('.a4-page');
+            for (let i = updatedPages.length - 1; i > 0; i--) {
+                if (updatedPages[i].children.length === 0 || updatedPages[i].innerHTML.trim() === '' || updatedPages[i].innerHTML === '<p><br></p>') {
+                    updatedPages[i].remove();
+                }
+            }
+        }
+
+        function attachPageEvents(page) {
+            page.addEventListener('input', () => {
+                paginate();
+            });
+
+            page.addEventListener('keyup', () => {
+                paginate();
+            });
+
+            page.addEventListener('blur', () => {
+                renderMath();
+                paginate();
+                saveState();
+            });
+        }
+
+        document.querySelectorAll('.a4-page').forEach(attachPageEvents);
+
+        function renderMath() {
+            if (window.MathJax) {
+                MathJax.typesetPromise([pageContainer]);
+            }
+        }
+
+        function formatText(command, value = null) {
+            document.execCommand(command, false, value);
+            saveState();
+        }
+
+        function applyHeading(tag) {
+            document.execCommand('formatBlock', false, '<' + tag + '>');
+            saveState();
+        }
+
+        function changeFontSize(sizePt) {
+            const selection = window.getSelection();
+            if (!selection.rangeCount || selection.isCollapsed) return;
+
+            const range = selection.getRangeAt(0);
+            const span = document.createElement('span');
+            span.style.fontSize = sizePt + 'pt';
+            
+            try {
+                range.surroundContents(span);
+            } catch (e) {
+                document.execCommand('fontSize', false, '3');
+            }
+            saveState();
+        }
+
+        function applyTextColor(color) {
+            document.execCommand('foreColor', false, color);
+            saveState();
+        }
+
+        function openNumberingModal() {
+            document.getElementById('numberingModal').style.display = 'block';
+        }
+
+        function closeNumberingModal() {
+            document.getElementById('numberingModal').style.display = 'none';
+        }
+
+        function applyListStyle(type) {
+            closeNumberingModal();
+            if (type === 'none') {
+                document.execCommand('insertUnorderedList', false, null);
+                return;
+            }
+
+            if (['disc', 'circle', 'square'].includes(type)) {
+                document.execCommand('insertUnorderedList', false, null);
+                const sel = window.getSelection();
+                if (sel.rangeCount) {
+                    let node = sel.anchorNode;
+                    while (node && node.nodeName !== 'UL') {
+                        node = node.parentNode;
+                    }
+                    if (node) node.style.listStyleType = type;
+                }
+            } else {
+                document.execCommand('insertOrderedList', false, null);
+                const sel = window.getSelection();
+                if (sel.rangeCount) {
+                    let node = sel.anchorNode;
+                    while (node && node.nodeName !== 'OL') {
+                        node = node.parentNode;
+                    }
+                    if (node) {
+                        if (type === 'decimal-parenthesis') {
+                            node.style.listStyleType = 'decimal';
+                        } else if (type === 'lower-alpha-parenthesis') {
+                            node.style.listStyleType = 'lower-alpha';
+                        } else {
+                            node.style.listStyleType = type;
+                        }
+                    }
+                }
+            }
+            saveState();
+        }
+
+        function insertShapeBanner() {
+            const selection = window.getSelection();
+            if (!selection.rangeCount || selection.isCollapsed) {
+                const bannerHTML = `<div class="custom-shape-banner" contenteditable="true">এখানে শিরোনাম লিখুন</div><p><br></p>`;
+                const lastPage = pageContainer.querySelector('.a4-page:last-child');
+                lastPage.insertAdjacentHTML('beforeend', bannerHTML);
+            } else {
+                const range = selection.getRangeAt(0);
+                const selectedText = range.toString().trim();
+                
+                if (selectedText.length > 0) {
+                    const bannerDiv = document.createElement('div');
+                    bannerDiv.className = 'custom-shape-banner';
+                    bannerDiv.contentEditable = 'true';
+                    bannerDiv.textContent = selectedText;
+
+                    range.deleteContents();
+                    range.insertNode(bannerDiv);
+                    
+                    const p = document.createElement('p');
+                    p.innerHTML = '<br>';
+                    bannerDiv.after(p);
+                }
+            }
+            
+            paginate();
+            saveState();
+        }
+
+        function setTextAlignment(alignType) {
+            document.execCommand('justify' + alignType.charAt(0).toUpperCase() + alignType.slice(1), false, null);
+            saveState();
+        }
+
+        function toggleColumns() {
+            isTwoColumns = !isTwoColumns;
+            const pages = pageContainer.querySelectorAll('.a4-page');
+            pages.forEach(page => page.classList.toggle('two-columns'));
+            paginate();
+        }
+
+        function insertAlert() {
+            const alertHTML = `
+                <div class="custom-alert-box">
+                    <div class="alert-badge">⚠️ সতর্কতা!</div>
+                    এখানে আপনার সতর্কতামূলক বার্তাটি লিখুন...
+                </div>
+                <p><br></p>
+            `;
+            const lastPage = pageContainer.querySelector('.a4-page:last-child');
+            lastPage.insertAdjacentHTML('beforeend', alertHTML);
+            renderMath();
+            paginate();
+            saveState();
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                pageContainer.innerHTML = history[historyIndex];
+                document.querySelectorAll('.a4-page').forEach(attachPageEvents);
+                renderMath();
+            }
+        }
+
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                pageContainer.innerHTML = history[historyIndex];
+                document.querySelectorAll('.a4-page').forEach(attachPageEvents);
+                renderMath();
+            }
+        }
+
+        function generatePDF() {
+            window.print();
+        }
+
+        // Direct Download PDF Function
+        function downloadPDFFile() {
+            const element = document.getElementById('pageContainer');
+            const opt = {
+                margin:       0,
+                filename:     'document.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        let currentZoom = 1;
+        function updateZoom() {
+            const pages = pageContainer.querySelectorAll('.a4-page');
+            pages.forEach(page => page.style.transform = `scale(${currentZoom})`);
+        }
+
+        function zoomIn() {
+            currentZoom += 0.1;
+            updateZoom();
+        }
+
+        function zoomOut() {
+            if (currentZoom > 0.3) {
+                currentZoom -= 0.1;
+                updateZoom();
+            }
+        }
+
+        function resetZoom() {
+            currentZoom = 1;
+            updateZoom();
+        }
+
+        let currentLineHeight = 1.2;
+        function updateLineSpacing() {
+            const pages = pageContainer.querySelectorAll('.a4-page');
+            pages.forEach(page => page.style.lineHeight = currentLineHeight.toFixed(1));
+            paginate();
+        }
+
+        function increaseLineSpacing() {
+            currentLineHeight += 0.1;
+            updateLineSpacing();
+        }
+
+        function decreaseLineSpacing() {
+            if (currentLineHeight > 0.8) {
+                currentLineHeight -= 0.1;
+                updateLineSpacing();
+            }
+        }
+    </script>
+</body>
+  </html>
